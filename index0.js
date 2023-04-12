@@ -17,6 +17,47 @@ token = 'coojthvRpUToSSAQORUcueOI'
 axios.defaults.headers.common['Authorization'] = token;
 
 
+
+const sidebar = document.querySelector('.sidebar');
+const toggleButton = document.getElementById('toggle-button');
+
+toggleButton.addEventListener('click', function() {
+  sidebar.classList.toggle('open');
+  toggleButton.classList.toggle('open');
+});
+
+main.addEventListener('click', function() {
+  if (sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    toggleButton.classList.remove('open');
+  }
+});
+
+
+function fetchParticipants() {
+  return axios.get('https://mock-api.driven.com.br/api/vm/uol/participants')
+    .then(response => response.data)
+    .catch(error => console.log(error));
+}
+
+function addParticipantsToUI(participants) {
+  const participantList = document.querySelector('.participants-list');
+  participantList.innerHTML = '';
+  
+  participants.forEach(participant => {
+    const participantHtml = `<li><img src="./assets/people.svg" />${participant.name}</li>`;
+    participantList.innerHTML += participantHtml;
+  });
+}
+
+fetchParticipants().then(participants => addParticipantsToUI(participants));
+
+setInterval(() => {
+  fetchParticipants().then(participants => addParticipantsToUI(participants));
+}, 5000);
+
+
+
 function checkNewMessages() {
   setInterval(() => {
   axios.get('https://mock-api.driven.com.br/api/vm/uol/messages')
@@ -58,17 +99,22 @@ function scrollToBottom() {
   window.scrollTo(0, document.body.scrollHeight - window.innerHeight);
 }
 
-// executa a função de verificação de novas mensagens a cada 5 segundos
-// setInterval(checkNewMessages, 5000);
-
-
-
 
 function modalHidden(){
   loginModal.style.display = 'none';
 }
 
-
+function sendUserRequest(user, URL) {
+  setInterval(() => {
+    axios.post(URL, user)
+      .then(response => {
+        console.log(response.data);
+      })
+      .catch(error => {
+        console.log(error);
+      });
+  }, 5000);
+}
 
 function login(username) {
   axios.post('https://mock-api.driven.com.br/api/vm/uol/participants', { name: username })
@@ -77,19 +123,18 @@ function login(username) {
         setInterval(() => {
           axios.post('https://mock-api.driven.com.br/api/vm/uol/status', { name: username })
             .then(response => {
-              modalHidden()
-              checkNewMessages()
               console.log(response.data);
+              console.log('login success');
             })
             .catch(error => {
               console.log(error);
+              location.reload(); // Recarrega a página se houver erro
+
             });
         }, 5000);
 
-        // LoadMessages();
+        checkNewMessages()
       } else {
-        // if server responds with status 400, the username is already taken
-        // ask for a new username
         console.log("Username already taken, please choose a different one");
       }
     })
@@ -112,7 +157,7 @@ function sendMessage(username, message) {
   })
   .catch(error => {
     console.log(error);
-    // location.reload(); // Recarrega a página se houver erro
+    location.reload(); // Recarrega a página se houver erro
   });
 }
 
@@ -124,6 +169,9 @@ form.addEventListener('submit', (event) => {
   // addMessage(username,' entra na sala...','login')
   console.log(`username: ${username}`);
   login(username)
+  sendUserRequest(username, 'https://mock-api.driven.com.br/api/vm/uol/status')
+  modalHidden()
+  checkNewMessages()
 });
 
 input.addEventListener('keyup', (event) => {

@@ -39,6 +39,7 @@ main{
 }
 
 .message {
+  word-break: break-all; /* Breaks words at any character, if necessary */
   display: flex;
   border: 1px solid #ccc;
   background: white;
@@ -48,6 +49,7 @@ main{
 }
 
 .time {
+  word-break: normal;
   font-weight: bold;
   color: #999;
   margin-right: 10px;

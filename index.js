@@ -1,61 +1,70 @@
-const closeModalButton = document.getElementById('enter');
+// Variables for HTML elements
 const loginModal = document.getElementById('login-modal');
-const main = document.querySelector('main');
-const form = document.querySelector('form');
-const usernameInput = document.querySelector('input[name="username"]');
-const input = document.getElementById('messageInput')
-const image = document.querySelector('.image');
-
-let username = 0;
-
-const userurl = 'https://mock-api.driven.com.br/api/vm/uol/participants';
-
-
-
-token = 'coojthvRpUToSSAQORUcueOI'
-
-axios.defaults.headers.common['Authorization'] = token;
-
+const usernameInput = document.querySelector('#login-modal input[name="username"]');
+const enterButton = document.querySelector('#login-modal button[type="submit"]');
+const main = document.querySelector("main");
+const inputMessage = document.querySelector('.image');
 
 
 const sidebar = document.querySelector('.sidebar');
 const toggleButton = document.getElementById('toggle-button');
 
-toggleButton.addEventListener('click', function() {
-  sidebar.classList.toggle('open');
-  toggleButton.classList.toggle('open');
-});
-
-main.addEventListener('click', function() {
-  if (sidebar.classList.contains('open')) {
-    sidebar.classList.remove('open');
-    toggleButton.classList.remove('open');
-  }
-});
+// constants
+const API_PARTICIPANTS = 'https://mock-api.driven.com.br/api/vm/uol/participants'
+const API_STATUS = 'https://mock-api.driven.com.br/api/vm/uol/status'
+const API_MESSAGES = 'https://mock-api.driven.com.br/api/vm/uol/messages'
+const TOKEN = 'coojthvRpUToSSAQORUcueOI';
+const STATUS_UPDATE_INTERVAL = 5000;
+const MESSAGES_UPDATE_INTERVAL = 5000;
 
 
-function fetchParticipants() {
-  return axios.get('https://mock-api.driven.com.br/api/vm/uol/participants')
-    .then(response => response.data)
-    .catch(error => console.log(error));
+axios.defaults.headers.common['Authorization'] = TOKEN;
+
+
+// state
+let username = null;
+
+
+function scrollToBottom() {
+  window.scrollTo(0, document.documentElement.scrollHeight);
 }
 
-function addParticipantsToUI(participants) {
-  const participantList = document.querySelector('.participants-list');
-  participantList.innerHTML = '';
-  
-  participants.forEach(participant => {
-    const participantHtml = `<li><img src="./assets/people.svg" />${participant.name}</li>`;
-    participantList.innerHTML += participantHtml;
+function modalHidden(){
+  loginModal.style.display = 'none';
+}
+
+function login(user){
+  axios.post(API_PARTICIPANTS, {
+    name: user
+  })
+  .then(response => {
+    console.log(`login success ${response.data}`);
+    modalHidden()
+    sendUserRequest(user, API_STATUS)
+  })
+  .catch(error => {
+    console.log(error.response.data);
+    console.log(`Logging Error ${user} js existe`);
   });
 }
 
-fetchParticipants().then(participants => addParticipantsToUI(participants));
 
-setInterval(() => {
-  fetchParticipants().then(participants => addParticipantsToUI(participants));
-}, 5000);
-
+async function sendUserRequest(user, URL) {
+  console.log('Sending user request')
+  try {
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await axios.post(URL, { name: user });
+        console.log(`sendUserRequest ${response.data}`);
+      } catch (error) {
+        console.log(error);
+      }
+    }, 5000);
+  } catch (error) {
+    clearInterval(intervalId);
+    console.log(error);
+  }
+}
 
 
 function checkNewMessages() {
@@ -65,12 +74,12 @@ function checkNewMessages() {
       const messages = response.data;
       const lastMessage = document.querySelector('.message:last-of-type');
       const lastMessageTime = lastMessage ? lastMessage.querySelector('.time').textContent : '';
-      
       for (let i = 0; i < messages.length; i++) {
         const message = messages[i];
         if (message.time > lastMessageTime) {
           const { from, text, type, time } = message;
           addMessage(from, text, type, time);
+          scrollToBottom()
         }
       }
       
@@ -78,8 +87,19 @@ function checkNewMessages() {
     .catch(error => {
       console.log(error);
     });
-  }, 5000);
+  }, 100);
 }
+
+
+function addParticipantsToUI(participants) {
+  
+  const participantList = document.querySelector('.participants-list');
+  participantList.textContent = '';
+
+  const participantHtml = participants.map(participant => `<li><img src="./assets/people.svg" />${participant.name}</li>`).join('');
+  participantList.innerHTML = participantHtml;
+}
+
 
 function addMessage(userName, message, messageType, timestamp) {
   const messageClass = messageType === 'normal' ? '' : 'status';
@@ -95,54 +115,6 @@ function addMessage(userName, message, messageType, timestamp) {
   main.innerHTML += messageHtml;
 }
 
-function scrollToBottom() {
-  window.scrollTo(0, document.body.scrollHeight - window.innerHeight);
-}
-
-
-function modalHidden(){
-  loginModal.style.display = 'none';
-}
-
-function sendUserRequest(user, URL) {
-  setInterval(() => {
-    axios.post(URL, user)
-      .then(response => {
-        console.log(response.data);
-      })
-      .catch(error => {
-        console.log(error);
-      });
-  }, 5000);
-}
-
-function login(username) {
-  axios.post('https://mock-api.driven.com.br/api/vm/uol/participants', { name: username })
-    .then(response => {
-      if (response.status === 200) {
-        setInterval(() => {
-          axios.post('https://mock-api.driven.com.br/api/vm/uol/status', { name: username })
-            .then(response => {
-              console.log(response.data);
-              console.log('login success');
-            })
-            .catch(error => {
-              console.log(error);
-              location.reload(); // Recarrega a página se houver erro
-
-            });
-        }, 5000);
-
-        checkNewMessages()
-      } else {
-        console.log("Username already taken, please choose a different one");
-      }
-    })
-    .catch(error => {
-      console.log(error);
-    });
-}
-
 function sendMessage(username, message) {
   axios.post('https://mock-api.driven.com.br/api/vm/uol/messages', {
     from: username,
@@ -151,8 +123,8 @@ function sendMessage(username, message) {
     type: 'message'
   })
   .then(response => {
-    console.log(response.data);
-    // LoadMessages(); // Atualiza as mensagens
+    // console.log(response.data);
+    // // LoadMessages(); // Atualiza as mensagens
     checkNewMessages()
   })
   .catch(error => {
@@ -161,29 +133,51 @@ function sendMessage(username, message) {
   });
 }
 
-
-
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  username = usernameInput.value;
-  // addMessage(username,' entra na sala...','login')
-  console.log(`username: ${username}`);
-  login(username)
-  sendUserRequest(username, 'https://mock-api.driven.com.br/api/vm/uol/status')
-  modalHidden()
-  checkNewMessages()
-});
-
-input.addEventListener('keyup', (event) => {
-  if (event.keyCode === 13) { 
-    image.click(); 
+function handleSendMessage() {
+  const messageInput = document.getElementById('messageInput');
+  const message = messageInput.value.trim();
+  if (message) {
+    sendMessage(username, message);
+    messageInput.value = '';
   }
+}
+
+function sidebarToggle(){
+  sidebar.classList.toggle('open');
+  toggleButton.classList.toggle('open');
+  async function getParticipants() {
+    try {
+      const response = await axios.get('https://mock-api.driven.com.br/api/vm/uol/participants');
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+  
+  getParticipants()
+  .then(participants => {
+    // console.log(participants);
+    addParticipantsToUI(participants);
+  })
+  .catch(error => console.log(error));
+
+  
+}
+
+
+// event listeners
+enterButton.addEventListener('click', (event) => {
+  event.preventDefault();
+  username = usernameInput.value.trim();
+  console.log(`Welcome, ${username}!`);
+  login(username)
+  checkNewMessages()
+  // updateParticipants()
+
+  inputMessage.addEventListener('click', handleSendMessage);
+  toggleButton.addEventListener('click', sidebarToggle)
+  main.addEventListener('click', sidebarToggle)
 });
 
-image.addEventListener('click', () => {
-  const message = input.value;
-  messageInput.value = '';
-  // addMessage(username, message);
-  sendMessage(username,message);
-});
 

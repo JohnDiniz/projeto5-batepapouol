@@ -14,8 +14,7 @@ const API_PARTICIPANTS = 'https://mock-api.driven.com.br/api/vm/uol/participants
 const API_STATUS = 'https://mock-api.driven.com.br/api/vm/uol/status'
 const API_MESSAGES = 'https://mock-api.driven.com.br/api/vm/uol/messages'
 const TOKEN = 'coojthvRpUToSSAQORUcueOI';
-const STATUS_UPDATE_INTERVAL = 5000;
-const MESSAGES_UPDATE_INTERVAL = 5000;
+
 
 
 axios.defaults.headers.common['Authorization'] = TOKEN;
@@ -33,43 +32,41 @@ function modalHidden(){
   loginModal.style.display = 'none';
 }
 
-function login(user){
-  axios.post(API_PARTICIPANTS, {
-    name: user
-  })
-  .then(response => {
+async function login(user) {
+  try {
+    const response = await axios.post(API_PARTICIPANTS, { name: user });
     console.log(`login success ${response.data}`);
+    checkNewMessages()
+    sendUserRequest(username, API_STATUS)
     modalHidden()
-    sendUserRequest(user, API_STATUS)
-  })
-  .catch(error => {
+    return response.data;
+  } catch (error) {
     console.log(error.response.data);
     console.log(`Logging Error ${user} js existe`);
-  });
+    throw new Error(`Logging Error ${user} js existe`);
+  }
 }
 
 
 async function sendUserRequest(user, URL) {
   console.log('Sending user request')
   try {
-    const intervalId = setInterval(async () => {
+   setInterval(async () => {
       try {
         const response = await axios.post(URL, { name: user });
-        console.log(`sendUserRequest ${response.data}`);
       } catch (error) {
         console.log(error);
       }
     }, 5000);
   } catch (error) {
-    clearInterval(intervalId);
-    console.log(error);
+    // console.log(error);
   }
 }
 
 
 function checkNewMessages() {
   setInterval(() => {
-  axios.get('https://mock-api.driven.com.br/api/vm/uol/messages')
+  axios.get(API_MESSAGES)
     .then(response => {
       const messages = response.data;
       const lastMessage = document.querySelector('.message:last-of-type');
@@ -87,7 +84,7 @@ function checkNewMessages() {
     .catch(error => {
       console.log(error);
     });
-  }, 100);
+  }, 3000);
 }
 
 
@@ -116,15 +113,13 @@ function addMessage(userName, message, messageType, timestamp) {
 }
 
 function sendMessage(username, message) {
-  axios.post('https://mock-api.driven.com.br/api/vm/uol/messages', {
+  axios.post(API_MESSAGES, {
     from: username,
     to: 'Todos',
     text: message,
     type: 'message'
   })
   .then(response => {
-    // console.log(response.data);
-    // // LoadMessages(); // Atualiza as mensagens
     checkNewMessages()
   })
   .catch(error => {
@@ -147,7 +142,7 @@ function sidebarToggle(){
   toggleButton.classList.toggle('open');
   async function getParticipants() {
     try {
-      const response = await axios.get('https://mock-api.driven.com.br/api/vm/uol/participants');
+      const response = await axios.get(API_PARTICIPANTS);
       return response.data;
     } catch (error) {
       console.log(error);
@@ -157,12 +152,9 @@ function sidebarToggle(){
   
   getParticipants()
   .then(participants => {
-    // console.log(participants);
     addParticipantsToUI(participants);
   })
   .catch(error => console.log(error));
-
-  
 }
 
 
@@ -172,10 +164,18 @@ enterButton.addEventListener('click', (event) => {
   username = usernameInput.value.trim();
   console.log(`Welcome, ${username}!`);
   login(username)
-  checkNewMessages()
-  // updateParticipants()
+ 
+
 
   inputMessage.addEventListener('click', handleSendMessage);
+  inputMessage.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      // Enter key was pressed
+      console.log('Enter key pressed');
+      // call a function or perform an action
+    }
+  });
+  
   toggleButton.addEventListener('click', sidebarToggle)
   main.addEventListener('click', sidebarToggle)
 });
